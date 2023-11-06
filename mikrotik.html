@@ -1,0 +1,248 @@
+<div id="text-generation-tool">
+    <textarea rows="4" cols="50" id="topic"
+        placeholder="Ceritakan Detail Kendala Mikrotik dan Jaringan Anda!"></textarea>
+
+    <!-- Recaptcha -->
+    <div class="g-recaptcha mb-2" data-sitekey="6LdeNtIfkakaksa-qsaasjSh-Vhz_IKqvLO" data-callback="onRecaptchaSuccess"
+        data-expired-callback="onRecaptchaResponseExpiry" data-error-callback="onRecaptchaError"></div>
+
+    <button id="generate-button">Get Advice</button>
+
+
+    <div id="result-container" style="display: none;">
+        <div class="result-wrapper">
+            <div class="result-content">
+                <textarea id="result" readonly></textarea>
+            </div>
+            <div class="copy-button-container">
+                <button id="copy-button">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loader" style="display: none;"></div>
+
+    <div>
+        <p><b>Note: Mohon Berikan Informasi yang lengkap dan detail terkait masalah jaringan dan Mikrotik anda agar
+                solusi yang diberikan oleh AI hasilnya lebih akurat! </b></p>
+        <p style="text-align:center"><b><i>Kasih Jajan Kreator👇 </i></b></p>
+    </div>
+</div>
+
+<style>
+    /* Basic styles for the text generation tool */
+    #text-generation-tool {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        font-family: Arial, sans-serif;
+    }
+
+    #topic {
+        width: 100%;
+        padding: 15px;
+        margin-bottom: 20px;
+        font-size: 16px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+
+    #generate-button {
+        display: block;
+        width: 100%;
+        padding: 15px;
+        margin-bottom: 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        color: #fff;
+        background-color: #5a28de;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    #generate-button:hover {
+        background-color: #3e1eca;
+    }
+
+    #result-container {
+        display: none;
+        margin-bottom: 20px;
+    }
+
+    .result-wrapper {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .result-content {
+        display: flex;
+    }
+
+    #result {
+        flex: 1;
+        height: 400px;
+        padding: 15px;
+        font-size: 16px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+    }
+
+    .copy-button-container {
+        margin-top: 10px;
+        text-align: right;
+    }
+
+    #copy-button {
+        padding: 8px 12px;
+        font-size: 14px;
+        border: none;
+        border-radius: 5px;
+        color: #fff;
+        background-color: #5a28de;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    #copy-button:hover {
+        background-color: #3e1eca;
+    }
+
+    /* CSS for the loader */
+    .loader {
+        display: block;
+        margin: 50px auto;
+        border: 16px solid #735ef3;
+        /* Light grey */
+        border-top: 16px solid #5a28de;
+        /* Blue */
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script src="https://www.google.com/recaptcha/api.js" async defer>
+</script>
+
+
+
+<script>
+
+    var captchaValidated = false;
+
+    // Fungsi dipanggil ketika captcha berhasil diverifikasi
+    function onRecaptchaSuccess() {
+        captchaValidated = true;
+    }
+
+    // Fungsi dipanggil ketika captcha gagal diverifikasi
+    function onRecaptchaError() {
+        captchaValidated = false;
+    }
+
+    document.getElementById("generate-button").addEventListener("click", function (e) {
+        e.preventDefault();
+
+        var topic = document.getElementById('topic').value;
+        var prompt = topic;
+        var loading = document.getElementById('loading');
+        var result = document.getElementById('result');
+        var resultC = document.getElementById('result-container');
+
+        if (topic.trim() === "") {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Text masih Kosong, Harap isi terlebih dahulu',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            })
+            return; // Tidak melanjutkan proses generate jika nilai 'topic' kosong
+        }
+
+        if (!captchaValidated) {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Silakan verifikasi captcha terlebih dahulu.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            return; // Tidak melanjutkan proses generate jika captcha belum diverifikasi
+        }
+
+
+        var generateButton = document.getElementById("generate-button");
+
+        if (generateButton.disabled) {
+            return; // Prevent multiple clicks while content is being generated
+        }
+
+        generateButton.disabled = true;
+
+
+        loading.style.display = 'block';
+        result.style.display = 'none'; // hide result textarea
+        resultC.style.display = 'none';
+
+
+        var formData = new FormData();
+        formData.append('action', 'openai_generate_text2');
+        formData.append('prompt', prompt);
+
+        fetch('/wp-admin/admin-ajax.php', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                if (data.success) {
+                    result.value = data.data.choices[0].message.content;
+                    result.style.display = 'block'; // show result textarea
+                    resultC.style.display = 'block';
+                    generateButton.disabled = false;
+                } else {
+                    result.value = 'An error occurred: ' + data.data;
+                    result.style.display = 'block'; // show result textarea
+                    resultC.style.display = 'block';
+                    generateButton.disabled = false;
+                }
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                result.value = 'An error occurred: ' + error.message;
+                result.style.display = 'block'; // show result textarea
+                resultC.style.display = 'block';
+                generateButton.disabled = false;
+
+            });
+    });
+
+    var copyButton = document.getElementById('copy-button');
+    copyButton.addEventListener('click', function () {
+        var result = document.getElementById('result');
+        result.select();
+        document.execCommand('copy');
+        Swal.fire({
+            title: 'Copied',
+            text: 'Copied to clipboard!',
+            icon: 'success',
+            confirmButtonText: 'OK'
+        })
+    });
+</script>
